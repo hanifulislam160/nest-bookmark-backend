@@ -5,7 +5,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { AuthDto } from './dto';
 import * as argon from 'argon2';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/client';
-// import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+
 
 @Injectable({})
 export class AuthService {
@@ -34,8 +34,21 @@ export class AuthService {
       throw error;
     }
   }
-  signin() {
-    return { msg: 'I want to login' };
+  async signin(dto: AuthDto) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email,
+      },
+    });
+
+    if (!user) throw new ForbiddenException('User does not exist')
+    
+    const isPasswordValid = await argon.verify(user.hash, dto.password);
+
+    if (!isPasswordValid) throw new ForbiddenException('Password is not correct')
+    
+    const { hash: _, ...userWithoutHash } = user;
+
+    return userWithoutHash;
   }
 }
-
